@@ -7,8 +7,6 @@ use std::sync::Arc;
 use std::time::Instant;
 use zkm_sdk::{prover::ClientCfg, prover::ProverInput, ProverClient};
 
-mod check;
-
 async fn prove(
     cfg: &ClientCfg,
     json_path: &str,
@@ -89,7 +87,7 @@ async fn prove_tx(
     let suite_json_path = format!("{}/{}.json", outdir, block_no);
     std::fs::write(suite_json_path.clone(), &buf)?;
     let check_start_time = Instant::now();
-    crate::check::execute_test_suite(&buf).unwrap();
+    check::execute_test_suite_from_bytes(&buf).unwrap();
     let check_end_time = Instant::now();
     log::info!(
         "Elapsed time: {:?} micros check block_no:{}",
@@ -132,7 +130,7 @@ async fn prove_tx(
 
 async fn check(filepath: &str) -> anyhow::Result<()> {
     let buf = std::fs::read(filepath).expect("Failed to read file");
-    crate::check::execute_test_suite(&buf).unwrap();
+    check::execute_test_suite_from_bytes(&buf).unwrap();
     Ok(())
 }
 
