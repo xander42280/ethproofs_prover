@@ -1,5 +1,7 @@
 /target
 /sdk
 /output
+/guest/target
 .vscode
 run.sh
+Cargo.lock
