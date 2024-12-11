@@ -5,7 +5,10 @@ use std::fs::read;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
+use std::time::UNIX_EPOCH;
 use zkm_sdk::{prover::ClientCfg, prover::ProverInput, ProverClient};
+
+mod ethproofs_client;
 
 async fn prove(
     cfg: &ClientCfg,
@@ -15,7 +18,7 @@ async fn prove(
     execute_only: bool,
     outdir: &str,
     block_no: u64,
-) {
+) -> Option<String> {
     log::info!("Start prove block! block_no:{}", block_no);
     let prover_client = ProverClient::new(cfg).await;
     let input = ProverInput {
@@ -26,6 +29,7 @@ async fn prove(
         execute_only,
     };
 
+    let mut ret = None;
     let start = Instant::now();
     let proving_result = prover_client.prover.prove(&input, None).await;
     match proving_result {
@@ -44,6 +48,7 @@ async fn prove(
                 match f.write(prover_result.proof_with_public_inputs.as_slice()) {
                     Ok(bytes_written) => {
                         log::info!("Proof: successfully written {} bytes.", bytes_written);
+                        ret = Some(String::from_utf8(prover_result.proof_with_public_inputs).unwrap());
                     }
                     Err(e) => {
                         log::info!("Proof: failed to write to file: {}", e);
@@ -69,8 +74,10 @@ async fn prove(
         elapsed.as_secs(),
         block_no
     );
+    ret
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn prove_tx(
     cfg: &ClientCfg,
     outdir: &str,
@@ -79,6 +86,8 @@ async fn prove_tx(
     execute_only: bool,
     test_suite: &models::TestSuite,
     block_no: u64,
+    ethproofs_client: &ethproofs_client::EthproofClient,
+    cluster_id: i64,
 ) -> anyhow::Result<()> {
     let mut buf = Vec::new();
     let json_string = serde_json::to_string(&test_suite).expect("Failed to serialize");
@@ -98,8 +107,41 @@ async fn prove_tx(
         log::info!("ELF_PATH is empty, skip proving");
         return Ok(());
     }
+    let proof_id = std::time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
+    let req = ethproofs_client::QueuedProofRequest {
+        block_number: block_no,
+        cluster_id,
+        proof_id,
+    };
+    match ethproofs_client.queued_proof(&req).await {
+        Ok(res) => {
+            log::info!("[queued_proof] res: {:?}", res);
+        }
+        Err(e) => {
+            log::error!("[queued_proof] error: {:?}", e);
+            return Err(e);
+        }
+    }
+
+    let req = ethproofs_client::ProvingProofRequest {
+        block_number: block_no,
+        cluster_id,
+        proof_id,
+    };
+    match ethproofs_client.proving_proof(&req).await {
+        Ok(res) => {
+            log::info!("[proving_proof] res: {:?}", res);
+        }
+        Err(e) => {
+            log::error!("[proving_proof] error: {:?}", e);
+            return Err(e);
+        }
+    }
     let start_time = Instant::now();
-    prove(
+    let result = prove(
         cfg,
         &suite_json_path,
         elf_path,
@@ -124,7 +166,28 @@ async fn prove_tx(
             .unwrap_or_default(),
         end_time.duration_since(start_time).as_secs(),
     );
-
+    let proof = match result {
+        Some(proof) => proof,
+        None => {
+            "".to_string()
+        }
+    };
+    let req = ethproofs_client::ProvedProofRequest {
+        block_number: block_no,
+        cluster_id,
+        proof_id,
+        proving_cycles: 1,
+        proving_time: end_time.duration_since(start_time).as_millis() as u64,
+        proof,
+    };
+    match ethproofs_client.proved_proof(&req).await {
+        Ok(res) => {
+            log::info!("[proved_proof] res: {:?}", res);
+        }
+        Err(e) => {
+            log::error!("[proved_proof] error: {:?}", e);
+        }
+    }
     Ok(())
 }
 
@@ -132,6 +195,29 @@ async fn check(filepath: &str) -> anyhow::Result<()> {
     let buf = std::fs::read(filepath).expect("Failed to read file");
     check::execute_test_suite_from_bytes(&buf).unwrap();
     Ok(())
+}
+
+async fn create_cluster(ethproofs_client: &ethproofs_client::EthproofClient) {
+    let req = ethproofs_client::CreateClusterRequest {
+        nickname: "ZKM".to_string(),
+        description: "zkm test prover".to_string(),
+        hardware: "zkm gpu prover".to_string(),
+        cycle_type: "mips".to_string(),
+        proof_type: "Groth16".to_string(),
+        configuration: vec![ethproofs_client::ClusterConfiguration {
+            instance_type: "p3.8xlarge".to_string(),
+            instance_count: 1,
+        }],
+    };
+    log::info!("req: {:?}", req);
+    match ethproofs_client.create_cluster(&req).await {
+        Ok(res) => {
+            log::info!("res: {:?}", res);
+        }
+        Err(e) => {
+            log::error!("error: {:?}", e);
+        }
+    }
 }
 
 #[tokio::main]
@@ -155,11 +241,19 @@ async fn main() -> anyhow::Result<()> {
     let private_key = env::var("PRIVATE_KEY").ok();
     let prove_loop = env::var("PROVE_LOOP").unwrap_or("false".to_string());
     let prove_loop = prove_loop.parse::<bool>().unwrap_or(false);
+    let ethproofs_apikey = env::var("ETHPROOFS_APIKEY").unwrap_or("".to_string());
+    let cluster_id = env::var("CLUSTER_ID").unwrap_or("1".to_string());
+    let cluster_id = cluster_id.parse::<i64>().unwrap_or(1);
+    let ethproofs_client = ethproofs_client::EthproofClient::new(
+        "https://staging--ethproofs.netlify.app",
+        &ethproofs_apikey,
+    );
 
     let args: Vec<String> = env::args().collect();
     if args.len() > 2 {
         match args[1].as_str() {
             "check" => check(args[2].as_str()).await?,
+            "create_cluster" => create_cluster(&ethproofs_client).await,
             &_ => todo!(),
         };
         return Ok(());
@@ -199,10 +293,12 @@ async fn main() -> anyhow::Result<()> {
                         execute_only,
                         &items,
                         block_no,
+                        &ethproofs_client,
+                        cluster_id,
                     )
                     .await?;
                 }
-                block_no += 1;
+                block_no += 1000;
             }
             Err(e) => {
                 log::error!("Generating json file for block_no: {} is failed", block_no);

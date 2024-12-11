@@ -31,7 +31,7 @@ log = "0.4.0"
 env_logger = "0.10"
 k256 = { version = "0.13.3", features = ["ecdsa"], default-features = false }
 check = { path = "../check"}
-
+reqwest = { version = "0.11", features = ["json"] }
 
 [patch."https://github.com/zkMIPS/revme"]
 models = {path="../../zkMIPS/revme/models"}
