@@ -110,12 +110,13 @@ async fn prove_tx(
     let proof_id = std::time::SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_millis() as i64;
+        .as_secs() as i64;
     let req = ethproofs_client::QueuedProofRequest {
         block_number: block_no,
         cluster_id,
         proof_id,
     };
+    log::info!("[queued_proof] req: {:?}", req);
     match ethproofs_client.queued_proof(&req).await {
         Ok(res) => {
             log::info!("[queued_proof] res: {:?}", res);
@@ -131,6 +132,7 @@ async fn prove_tx(
         cluster_id,
         proof_id,
     };
+    log::info!("[proving_proof] req: {:?}", req);
     match ethproofs_client.proving_proof(&req).await {
         Ok(res) => {
             log::info!("[proving_proof] res: {:?}", res);
@@ -180,6 +182,7 @@ async fn prove_tx(
         proving_time: end_time.duration_since(start_time).as_millis() as u64,
         proof,
     };
+    log::info!("[proved_proof] req: {:?}", req);
     match ethproofs_client.proved_proof(&req).await {
         Ok(res) => {
             log::info!("[proved_proof] res: {:?}", res);
