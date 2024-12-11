@@ -21,4 +21,10 @@ fix: ## Automatically apply lint suggestions. This flag implies `--no-deps` and 
 test: ## Run tests for all the workspace members
 	@cargo test --release --all
 
-.PHONY: clippy fmt test
+build:
+	@cargo build --release
+
+build-guest:
+	cd guest && cargo build -r --target=mips-unknown-linux-musl
+
+.PHONY: clippy fmt test build build-guest
