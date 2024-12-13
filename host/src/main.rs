@@ -48,7 +48,7 @@ async fn prove(
                 match f.write(prover_result.proof_with_public_inputs.as_slice()) {
                     Ok(bytes_written) => {
                         log::info!("Proof: successfully written {} bytes.", bytes_written);
-                        ret = Some(String::from_utf8(prover_result.proof_with_public_inputs).unwrap());
+                        ret = Some(base64::encode(prover_result.proof_with_public_inputs));
                     }
                     Err(e) => {
                         log::info!("Proof: failed to write to file: {}", e);
@@ -181,6 +181,7 @@ async fn prove_tx(
         proving_cycles: 1,
         proving_time: end_time.duration_since(start_time).as_millis() as u64,
         proof,
+        ..Default::default()
     };
     log::info!("[proved_proof] req: {:?}", req);
     match ethproofs_client.proved_proof(&req).await {
@@ -214,6 +215,26 @@ async fn create_cluster(ethproofs_client: &ethproofs_client::EthproofClient) {
     };
     log::info!("req: {:?}", req);
     match ethproofs_client.create_cluster(&req).await {
+        Ok(res) => {
+            log::info!("res: {:?}", res);
+        }
+        Err(e) => {
+            log::error!("error: {:?}", e);
+        }
+    }
+}
+
+async fn create_single_machine(ethproofs_client: &ethproofs_client::EthproofClient) {
+    let req = ethproofs_client::CreateSingleMachineRequest {
+        nickname: "ZKM".to_string(),
+        description: "zkm test prover".to_string(),
+        hardware: "zkm gpu prover".to_string(),
+        cycle_type: "mips".to_string(),
+        proof_type: "Groth16".to_string(),
+        instance_type: "p3.8xlarge".to_string(),
+    };
+    log::info!("req: {:?}", req);
+    match ethproofs_client.single_machine(&req).await {
         Ok(res) => {
             log::info!("res: {:?}", res);
         }
@@ -257,6 +278,7 @@ async fn main() -> anyhow::Result<()> {
         match args[1].as_str() {
             "check" => check(args[2].as_str()).await?,
             "create_cluster" => create_cluster(&ethproofs_client).await,
+            "create_single_machine" => create_single_machine(&ethproofs_client).await,
             &_ => todo!(),
         };
         return Ok(());

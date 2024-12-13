@@ -11,6 +11,21 @@ pub struct ClusterConfiguration {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct CreateSingleMachineRequest {
+    pub nickname: String,
+    pub description: String,
+    pub hardware: String,
+    pub cycle_type: String,
+    pub proof_type: String,
+    pub instance_type: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CreateSingleMachineResponse {
+    pub id: i64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CreateClusterRequest {
     pub nickname: String,
     pub description: String,
@@ -49,7 +64,7 @@ pub struct ProvingProofResponse {
     pub proof_id: i64,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Default)]
 pub struct ProvedProofRequest {
     pub proof_id: i64,
     pub block_number: u64,
@@ -58,6 +73,7 @@ pub struct ProvedProofRequest {
     pub proving_time: u64,
     pub proving_cycles: u64,
     pub proof: String,
+    pub verifier_id: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -86,6 +102,14 @@ impl EthproofClient {
         req: &CreateClusterRequest,
     ) -> Result<CreateClusterResponse> {
         self.post_json("api/v0/clusters", req).await
+    }
+
+    // https://staging--ethproofs.netlify.app/api/v0/single-machine
+    pub async fn single_machine(
+        &self,
+        req: &CreateSingleMachineRequest,
+    ) -> Result<CreateSingleMachineResponse> {
+        self.post_json("api/v0/single-machine", req).await
     }
 
     // https://staging--ethproofs.netlify.app/api/v0/proofs/queued

@@ -2234,6 +2234,7 @@ version = "0.1.0"
 dependencies = [
  "alloy-rlp",
  "anyhow",
+ "base64 0.13.1",
  "bincode",
  "check",
  "common",
