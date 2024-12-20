@@ -2257,6 +2257,7 @@ dependencies = [
  "sha2",
  "tokio",
  "triehash",
+ "zkm-build",
  "zkm-sdk",
 ]
 
@@ -6276,9 +6277,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "zkm-build"
+version = "0.1.0"
+source = "git+https://github.com/zkMIPS/zkm?branch=main#3f4ec4dd35aeca47b882f712dcdc6dce43a7375f"
+dependencies = [
+ "anyhow",
+ "cargo_metadata",
+ "chrono",
+ "clap",
+ "dirs",
+]
+
+[[package]]
 name = "zkm-emulator"
 version = "0.1.0"
-source = "git+https://github.com/zkMIPS/zkm.git?branch=main#7cd2e696a3bf19a1e49db2d706a30c4d990a2c8f"
+source = "git+https://github.com/zkMIPS/zkm?branch=main#3f4ec4dd35aeca47b882f712dcdc6dce43a7375f"
 dependencies = [
  "bincode",
  "byteorder",
@@ -6295,7 +6308,7 @@ dependencies = [
 [[package]]
 name = "zkm-prover"
 version = "0.1.0"
-source = "git+https://github.com/zkMIPS/zkm.git?branch=main#7cd2e696a3bf19a1e49db2d706a30c4d990a2c8f"
+source = "git+https://github.com/zkMIPS/zkm?branch=main#3f4ec4dd35aeca47b882f712dcdc6dce43a7375f"
 dependencies = [
  "anyhow",
  "bincode",
@@ -6324,7 +6337,7 @@ dependencies = [
 
 [[package]]
 name = "zkm-sdk"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",

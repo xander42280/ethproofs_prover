@@ -1,4 +1,5 @@
 use common::file;
+use ethers_providers::Middleware;
 use ethers_providers::{Http, Provider};
 use std::env;
 use std::fs::read;
@@ -88,6 +89,7 @@ async fn prove_tx(
     block_no: u64,
     ethproofs_client: &ethproofs_client::EthproofClient,
     cluster_id: i64,
+    report: bool,
 ) -> anyhow::Result<()> {
     let mut buf = Vec::new();
     let json_string = serde_json::to_string(&test_suite).expect("Failed to serialize");
@@ -117,13 +119,15 @@ async fn prove_tx(
         proof_id,
     };
     log::info!("[queued_proof] req: {:?}", req);
-    match ethproofs_client.queued_proof(&req).await {
-        Ok(res) => {
-            log::info!("[queued_proof] res: {:?}", res);
-        }
-        Err(e) => {
-            log::error!("[queued_proof] error: {:?}", e);
-            return Err(e);
+    if report {
+        match ethproofs_client.queued_proof(&req).await {
+            Ok(res) => {
+                log::info!("[queued_proof] res: {:?}", res);
+            }
+            Err(e) => {
+                log::error!("[queued_proof] error: {:?}", e);
+                return Err(e);
+            }
         }
     }
 
@@ -133,13 +137,15 @@ async fn prove_tx(
         proof_id,
     };
     log::info!("[proving_proof] req: {:?}", req);
-    match ethproofs_client.proving_proof(&req).await {
-        Ok(res) => {
-            log::info!("[proving_proof] res: {:?}", res);
-        }
-        Err(e) => {
-            log::error!("[proving_proof] error: {:?}", e);
-            return Err(e);
+    if report {
+        match ethproofs_client.proving_proof(&req).await {
+            Ok(res) => {
+                log::info!("[proving_proof] res: {:?}", res);
+            }
+            Err(e) => {
+                log::error!("[proving_proof] error: {:?}", e);
+                return Err(e);
+            }
         }
     }
     let start_time = Instant::now();
@@ -170,9 +176,7 @@ async fn prove_tx(
     );
     let proof = match result {
         Some(proof) => proof,
-        None => {
-            "".to_string()
-        }
+        None => "".to_string(),
     };
     let req = ethproofs_client::ProvedProofRequest {
         block_number: block_no,
@@ -184,12 +188,14 @@ async fn prove_tx(
         ..Default::default()
     };
     log::info!("[proved_proof] req: {:?}", req);
-    match ethproofs_client.proved_proof(&req).await {
-        Ok(res) => {
-            log::info!("[proved_proof] res: {:?}", res);
-        }
-        Err(e) => {
-            log::error!("[proved_proof] error: {:?}", e);
+    if report {
+        match ethproofs_client.proved_proof(&req).await {
+            Ok(res) => {
+                log::info!("[proved_proof] res: {:?}", res);
+            }
+            Err(e) => {
+                log::error!("[proved_proof] error: {:?}", e);
+            }
         }
     }
     Ok(())
@@ -244,6 +250,14 @@ async fn create_single_machine(ethproofs_client: &ethproofs_client::EthproofClie
     }
 }
 
+async fn get_prove_block_no(client: Arc<Provider<Http>>) -> anyhow::Result<u64> {
+    let block_no = client
+        .get_block_number()
+        .await
+        .map_err(|e| anyhow::anyhow!(e))?;
+    Ok(block_no.as_u64() / 100 * 100)
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env_logger::try_init().unwrap_or_default();
@@ -268,6 +282,8 @@ async fn main() -> anyhow::Result<()> {
     let ethproofs_apikey = env::var("ETHPROOFS_APIKEY").unwrap_or("".to_string());
     let cluster_id = env::var("CLUSTER_ID").unwrap_or("1".to_string());
     let cluster_id = cluster_id.parse::<i64>().unwrap_or(1);
+    let report = env::var("REPORT").unwrap_or("false".to_string());
+    let report = report.parse::<bool>().unwrap_or(false);
     let ethproofs_client = ethproofs_client::EthproofClient::new(
         "https://staging--ethproofs.netlify.app",
         &ethproofs_apikey,
@@ -297,8 +313,16 @@ async fn main() -> anyhow::Result<()> {
         domain_name,
         private_key,
     };
-
+    let mut last_block_no = 0u64;
     loop {
+        if block_no == last_block_no {
+            if block_no > 0 {
+                tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+            }
+            block_no = get_prove_block_no(client.clone()).await?;
+            continue;
+        }
+
         let test_suite =
             executor::process(client.clone(), block_no, chain_id.parse().unwrap()).await;
         match test_suite {
@@ -320,10 +344,11 @@ async fn main() -> anyhow::Result<()> {
                         block_no,
                         &ethproofs_client,
                         cluster_id,
+                        report,
                     )
                     .await?;
                 }
-                block_no += 1000;
+                last_block_no = block_no;
             }
             Err(e) => {
                 log::error!("Generating json file for block_no: {} is failed", block_no);

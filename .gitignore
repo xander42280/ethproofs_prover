@@ -2,6 +2,7 @@
 /sdk
 /output
 /guest/target
+/guest/elf
 .vscode
 run.sh
 Cargo.lock
