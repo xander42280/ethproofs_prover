@@ -1,6 +1,7 @@
 use common::file;
 use ethers_providers::Middleware;
 use ethers_providers::{Http, Provider};
+use std::collections::BTreeMap;
 use std::env;
 use std::fs::read;
 use std::path::Path;
@@ -333,6 +334,11 @@ async fn main() -> anyhow::Result<()> {
                     items.0.len(),
                 );
 
+                // only take the first tx
+                let mut one = models::TestSuite(BTreeMap::new());
+                let first_testunit = items.0.first_key_value().unwrap().1;
+                one.0.insert("one".to_string(), first_testunit.clone());
+
                 if !items.0.is_empty() {
                     prove_tx(
                         &prover_cfg,
@@ -340,7 +346,7 @@ async fn main() -> anyhow::Result<()> {
                         &elf_path,
                         seg_size,
                         execute_only,
-                        &items,
+                        &one,// &items,
                         block_no,
                         &ethproofs_client,
                         cluster_id,
