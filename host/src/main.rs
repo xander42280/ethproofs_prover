@@ -96,7 +96,7 @@ async fn prove_tx(
     let json_string = serde_json::to_string(&test_suite).expect("Failed to serialize");
     log::debug!("test_suite: {}", json_string);
     bincode::serialize_into(&mut buf, &json_string).expect("serialization failed");
-    let suite_json_path = format!("{}/{}.json", outdir, block_no);
+    let suite_json_path = format!("{}/{}_{}.json", outdir, block_no, test_suite.0.first_key_value().unwrap().0);
     std::fs::write(suite_json_path.clone(), &buf)?;
     let check_start_time = Instant::now();
     check::execute_test_suite_from_bytes(&buf).unwrap();
