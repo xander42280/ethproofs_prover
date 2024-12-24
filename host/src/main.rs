@@ -333,61 +333,57 @@ async fn main() -> anyhow::Result<()> {
                     block_no,
                     items.0.len(),
                 );
-                let total_start = Instant::now();
-                for (k, v) in items.0.iter() {
-                    let mut one = models::TestSuite(BTreeMap::new());
-                    one.0.insert(k.clone(), v.clone());
-                    let start = Instant::now();
-                    if !items.0.is_empty() {
-                        prove_tx(
-                            &prover_cfg,
-                            &output_dir,
-                            &elf_path,
-                            seg_size,
-                            execute_only,
-                            &one,// &items,
-                            block_no,
-                            &ethproofs_client,
-                            cluster_id,
-                            report,
-                        )
-                        .await?;
-                    }
-                    let end = Instant::now();
-                    log::info!(
-                        "Elapsed time: {:?} secs block_no:{} transactions:{}",
-                        end.duration_since(start).as_secs(),
-                        block_no,
-                        k,
-                    );
-                }
-                let total_end = Instant::now();
-                log::info!(
-                    "Elapsed time: {:?} secs block_no:{} transactions:{}",
-                    total_end.duration_since(total_start).as_secs(),
-                    block_no,
-                    items.0.len(),
-                );
-                // only take the first tx
-                // let mut one = models::TestSuite(BTreeMap::new());
-                // let first_testunit = items.0.first_key_value().unwrap().1;
-                // one.0.insert("one".to_string(), first_testunit.clone());
-
-                // if !items.0.is_empty() {
-                //     prove_tx(
-                //         &prover_cfg,
-                //         &output_dir,
-                //         &elf_path,
-                //         seg_size,
-                //         execute_only,
-                //         &one,// &items,
+                // let total_start = Instant::now();
+                // for (k, v) in items.0.iter() {
+                //     let mut one = models::TestSuite(BTreeMap::new());
+                //     one.0.insert(k.clone(), v.clone());
+                //     let start = Instant::now();
+                //     if !items.0.is_empty() {
+                //         prove_tx(
+                //             &prover_cfg,
+                //             &output_dir,
+                //             &elf_path,
+                //             seg_size,
+                //             execute_only,
+                //             &one,// &items,
+                //             block_no,
+                //             &ethproofs_client,
+                //             cluster_id,
+                //             report,
+                //         )
+                //         .await?;
+                //     }
+                //     let end = Instant::now();
+                //     log::info!(
+                //         "Elapsed time: {:?} secs block_no:{} transactions:{}",
+                //         end.duration_since(start).as_secs(),
                 //         block_no,
-                //         &ethproofs_client,
-                //         cluster_id,
-                //         report,
-                //     )
-                //     .await?;
+                //         k,
+                //     );
                 // }
+                // let total_end = Instant::now();
+                // log::info!(
+                //     "Elapsed time: {:?} secs block_no:{} transactions:{}",
+                //     total_end.duration_since(total_start).as_secs(),
+                //     block_no,
+                //     items.0.len(),
+                // );
+
+                if !items.0.is_empty() {
+                    prove_tx(
+                        &prover_cfg,
+                        &output_dir,
+                        &elf_path,
+                        seg_size,
+                        execute_only,
+                        &items,
+                        block_no,
+                        &ethproofs_client,
+                        cluster_id,
+                        report,
+                    )
+                    .await?;
+                }
                 last_block_no = block_no;
             }
             Err(e) => {
