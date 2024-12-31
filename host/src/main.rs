@@ -288,6 +288,8 @@ async fn main() -> anyhow::Result<()> {
     let cluster_id = cluster_id.parse::<i64>().unwrap_or(1);
     let report = env::var("REPORT").unwrap_or("false".to_string());
     let report = report.parse::<bool>().unwrap_or(false);
+    let max_tran_size = env::var("MAX_TRAN_SIZE").unwrap_or("150".to_string());
+    let max_tran_size = max_tran_size.parse::<_>().unwrap_or(150);
     let ethproofs_client = ethproofs_client::EthproofClient::new(
         "https://staging--ethproofs.netlify.app",
         &ethproofs_apikey,
@@ -372,7 +374,7 @@ async fn main() -> anyhow::Result<()> {
                 //     items.0.len(),
                 // );
 
-                if !items.0.is_empty() {
+                if !items.0.is_empty() && items.0.len() <= max_tran_size {
                     prove_tx(
                         &prover_cfg,
                         &output_dir,
