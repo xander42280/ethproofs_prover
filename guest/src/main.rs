@@ -28,9 +28,9 @@ pub fn main() {
 }
 
 fn ethereum_test() {
-    let input: Vec<u8> = zkm_runtime::io::read();
-    let suite = read_suite(&input);
-
+    // let input: Vec<u8> = zkm_runtime::io::read();
+    // let suite = read_suite(&input);
+    let suite: TestSuite = zkm_runtime::io::read();
     assert!(execute_test_suite(suite).is_ok());
 }
 

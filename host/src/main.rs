@@ -95,11 +95,12 @@ async fn prove_tx(
     report: bool,
 ) -> anyhow::Result<()> {
     let mut buf = Vec::new();
-    let json_string = serde_json::to_string(&test_suite).expect("Failed to serialize");
-    log::debug!("test_suite: {}", json_string);
-    bincode::serialize_into(&mut buf, &json_string).expect("serialization failed");
-    let suite_json_path = format!("{}/{}_{}.json", outdir, block_no, test_suite.0.first_key_value().unwrap().0);
-    std::fs::write(suite_json_path.clone(), &buf)?;
+    // let json_string = serde_json::to_string(&test_suite).expect("Failed to serialize");
+    // bincode::serialize_into(&mut buf, &json_string).expect("serialization failed");
+    bincode::serialize_into(&mut buf, &test_suite).expect("serialization failed");
+    log::debug!("test_suite len: {}", buf.len());
+    let suite_path = format!("{}/{}.bin", outdir, block_no);
+    std::fs::write(suite_path.clone(), &buf)?;
     let check_start_time = Instant::now();
     check::execute_test_suite_from_bytes(&buf).unwrap();
     let check_end_time = Instant::now();
@@ -154,7 +155,7 @@ async fn prove_tx(
     let start_time = Instant::now();
     let result = prove(
         cfg,
-        &suite_json_path,
+        &suite_path,
         elf_path,
         seg_size,
         execute_only,

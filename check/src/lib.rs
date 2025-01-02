@@ -17,8 +17,9 @@ pub fn recover_address(private_key: &[u8]) -> Option<Address> {
 }
 
 pub fn execute_test_suite_from_bytes(test_data: &[u8]) -> Result<(), String> {
-    let json_string: String = bincode::deserialize(test_data).map_err(|e| e.to_string())?;
-    let test_suite = serde_json::from_str::<TestSuite>(&json_string).map_err(|e| e.to_string())?;
+    let test_suite = bincode::deserialize::<TestSuite>(test_data).map_err(|e| e.to_string())?;
+    // let json_string: String = bincode::deserialize(test_data).map_err(|e| e.to_string())?;
+    // let test_suite = serde_json::from_str::<TestSuite>(&json_string).map_err(|e| e.to_string())?;
     execute_test_suite(&test_suite)
 }
 
