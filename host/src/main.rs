@@ -102,7 +102,13 @@ async fn prove_tx(
     let suite_path = format!("{}/{}.bin", outdir, block_no);
     std::fs::write(suite_path.clone(), &buf)?;
     let check_start_time = Instant::now();
-    check::execute_test_suite_from_bytes(&buf).unwrap();
+    match check::execute_test_suite_from_bytes(&buf) {
+        Ok(_) => {}
+        Err(e) => {
+            log::error!("skip: {} check failed: {:?}", block_no, e);
+            return Ok(());
+        }
+    }
     let check_end_time = Instant::now();
     log::info!(
         "Elapsed time: {:?} micros check block_no:{}",
@@ -260,7 +266,7 @@ async fn get_prove_block_no(client: Arc<Provider<Http>>) -> anyhow::Result<u64> 
         .get_block_number()
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
-    Ok(block_no.as_u64() / 100 * 100)
+    Ok(block_no.as_u64() / 750 * 750)
 }
 
 #[tokio::main]
