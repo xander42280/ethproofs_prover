@@ -22,7 +22,7 @@ async fn prove(
     execute_only: bool,
     outdir: &str,
     block_no: u64,
-) -> Option<(String, u64)> {
+) -> Option<(String, u64, u64)> {
     log::info!("Start prove block! block_no:{}", block_no);
     let prover_client = ProverClient::new(cfg).await;
     let input = ProverInput {
@@ -52,7 +52,7 @@ async fn prove(
                 match f.write(prover_result.proof_with_public_inputs.as_slice()) {
                     Ok(bytes_written) => {
                         log::info!("Proof: successfully written {} bytes.", bytes_written);
-                        ret = Some((base64::encode(prover_result.proof_with_public_inputs), prover_result.total_steps));
+                        ret = Some((base64::encode(prover_result.proof_with_public_inputs), prover_result.total_steps, prover_result.split_cost));
                     }
                     Err(e) => {
                         log::info!("Proof: failed to write to file: {}", e);
@@ -186,14 +186,14 @@ async fn prove_tx(
     );
     let proof = match result {
         Some(proof) => proof,
-        None => ("".to_string(), 0),
+        None => ("".to_string(), 0, 0),
     };
     let req = ethproofs_client::ProvedProofRequest {
         block_number: block_no,
         cluster_id,
         proof_id,
         proving_cycles: proof.1,
-        proving_time: end_time.duration_since(start_time).as_millis() as u64,
+        proving_time: end_time.duration_since(start_time).as_millis() as u64 - proof.2,
         proof: proof.0.clone(),
         verifier_id: VK_STR.to_string(),
         ..Default::default()
