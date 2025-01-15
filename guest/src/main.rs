@@ -46,7 +46,8 @@ fn execute_test_suite(suite: TestSuite) -> Result<(), String> {
         for (address, info) in unit.pre {
             let acc_info = revm::primitives::AccountInfo {
                 balance: info.balance,
-                code_hash: keccak256(&info.code),
+                // code_hash: keccak256(&info.code),
+                code_hash: B256::from(zkm_runtime::io::keccak(&info.code)),
                 code: Some(Bytecode::new_raw(info.code)),
                 nonce: info.nonce,
             };

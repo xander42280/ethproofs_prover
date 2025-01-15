@@ -31,6 +31,7 @@ async fn prove(
         private_inputstream: vec![],
         seg_size,
         execute_only,
+        ..Default::default()
     };
 
     let mut ret = None;
