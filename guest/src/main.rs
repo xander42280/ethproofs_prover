@@ -4,7 +4,7 @@
 use revm::{
     db::CacheState,
     interpreter::CreateScheme,
-    primitives::{calc_excess_blob_gas, keccak256, Bytecode, Env, SpecId, TransactTo, U256},
+    primitives::{calc_excess_blob_gas, Bytecode, Env, SpecId, TransactTo, U256, B256},
     Evm,
 };
 extern crate libc;
