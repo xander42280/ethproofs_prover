@@ -227,7 +227,7 @@ async fn create_cluster(ethproofs_client: &ethproofs_client::EthproofClient) {
         cycle_type: "mips".to_string(),
         proof_type: "Groth16".to_string(),
         configuration: vec![ethproofs_client::ClusterConfiguration {
-            instance_type: "p3.8xlarge".to_string(),
+            instance_type: "g5.8xlarge".to_string(),
             instance_count: 1,
         }],
     };
@@ -267,7 +267,7 @@ async fn get_prove_block_no(client: Arc<Provider<Http>>) -> anyhow::Result<u64> 
         .get_block_number()
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
-    Ok(block_no.as_u64() / 750 * 750)
+    Ok(block_no.as_u64() / 200 * 200)
 }
 
 #[tokio::main]
