@@ -222,13 +222,13 @@ async fn check(filepath: &str) -> anyhow::Result<()> {
 async fn create_cluster(ethproofs_client: &ethproofs_client::EthproofClient) {
     let req = ethproofs_client::CreateClusterRequest {
         nickname: "ZKM".to_string(),
-        description: "zkm test prover".to_string(),
+        description: "zkm gpu prover".to_string(),
         hardware: "zkm gpu prover".to_string(),
         cycle_type: "mips".to_string(),
         proof_type: "Groth16".to_string(),
         configuration: vec![ethproofs_client::ClusterConfiguration {
             instance_type: "g5.8xlarge".to_string(),
-            instance_count: 1,
+            instance_count: 2,
         }],
     };
     log::info!("req: {:?}", req);
@@ -245,7 +245,7 @@ async fn create_cluster(ethproofs_client: &ethproofs_client::EthproofClient) {
 async fn create_single_machine(ethproofs_client: &ethproofs_client::EthproofClient) {
     let req = ethproofs_client::CreateSingleMachineRequest {
         nickname: "ZKM".to_string(),
-        description: "zkm test prover".to_string(),
+        description: "zkm gpu prover".to_string(),
         hardware: "zkm gpu prover".to_string(),
         cycle_type: "mips".to_string(),
         proof_type: "Groth16".to_string(),
@@ -267,7 +267,7 @@ async fn get_prove_block_no(client: Arc<Provider<Http>>) -> anyhow::Result<u64> 
         .get_block_number()
         .await
         .map_err(|e| anyhow::anyhow!(e))?;
-    Ok(block_no.as_u64() / 200 * 200)
+    Ok(block_no.as_u64() / 100 * 100)
 }
 
 #[tokio::main]
@@ -333,7 +333,14 @@ async fn main() -> anyhow::Result<()> {
             if block_no > 0 {
                 tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
             }
-            block_no = get_prove_block_no(client.clone()).await?;
+            let latest_block_no = get_prove_block_no(client.clone()).await?;
+            if block_no == 0 {
+                block_no = latest_block_no;
+            } else {
+                if block_no + 100 <= latest_block_no {
+                    block_no += 100;
+                }
+            }
             continue;
         }
 
