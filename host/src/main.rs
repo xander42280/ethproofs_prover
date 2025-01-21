@@ -265,9 +265,9 @@ async fn create_single_machine(ethproofs_client: &ethproofs_client::EthproofClie
     }
 }
 
-async fn generate_test_suite(client: Arc<Provider<Http>>, block_no: u64, chain_id: u64, outdir: &str) {
+async fn generate_test_suite(client: Arc<Provider<Http>>, start_block_no: u64, chain_id: u64, outdir: &str) {
     let mut last_block_no = 0u64;
-    let mut block_no = block_no;
+    let mut block_no = start_block_no;
     loop {
         if block_no == last_block_no {
             if block_no > 0 {
@@ -408,6 +408,13 @@ async fn main() -> anyhow::Result<()> {
             Ok(metadata) => {
                 if metadata.is_file() {
                     log::info!("read {} success!", file_path);
+                    let buf = std::fs::read(&file_path).unwrap();
+                    let test_suite = bincode::deserialize::<models::TestSuite>(&buf);
+                    if test_suite.is_err() {
+                        log::warn!("Failed to deserialize test_suite: {:?}", test_suite);
+                        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                        continue;
+                    }
                     prove_tx(
                         &prover_cfg,
                         &output_dir,
