@@ -1,6 +1,7 @@
 use common::file;
 use ethers_providers::Middleware;
 use ethers_providers::{Http, Provider};
+use k256::elliptic_curve::rand_core::block;
 use std::collections::BTreeMap;
 use std::env;
 use std::fs::read;
@@ -89,19 +90,21 @@ async fn prove_tx(
     elf_path: &str,
     seg_size: u32,
     execute_only: bool,
-    test_suite: &models::TestSuite,
+    suite_path: &str,
     block_no: u64,
     ethproofs_client: &ethproofs_client::EthproofClient,
     cluster_id: i64,
     report: bool,
 ) -> anyhow::Result<()> {
-    let mut buf = Vec::new();
+    // let mut buf = Vec::new();
     // let json_string = serde_json::to_string(&test_suite).expect("Failed to serialize");
     // bincode::serialize_into(&mut buf, &json_string).expect("serialization failed");
-    bincode::serialize_into(&mut buf, &test_suite).expect("serialization failed");
-    log::debug!("test_suite len: {}", buf.len());
-    let suite_path = format!("{}/{}.bin", outdir, block_no);
-    std::fs::write(suite_path.clone(), &buf)?;
+    // bincode::serialize_into(&mut buf, &test_suite).expect("serialization failed");
+    // log::debug!("test_suite len: {}", buf.len());
+    // let suite_path = format!("{}/{}.bin", outdir, block_no);
+    // std::fs::write(suite_path.clone(), &buf)?;
+    let buf = std::fs::read(suite_path).unwrap();
+    let test_suite = bincode::deserialize::<models::TestSuite>(&buf).unwrap();
     let check_start_time = Instant::now();
     match check::execute_test_suite_from_bytes(&buf) {
         Ok(_) => {}
@@ -262,6 +265,57 @@ async fn create_single_machine(ethproofs_client: &ethproofs_client::EthproofClie
     }
 }
 
+async fn generate_test_suite(client: Arc<Provider<Http>>, block_no: u64, chain_id: u64, outdir: &str) {
+    let mut last_block_no = 0u64;
+    let mut block_no = block_no;
+    loop {
+        if block_no == last_block_no {
+            if block_no > 0 {
+                tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+            }
+            let latest_block_no_ret = get_prove_block_no(client.clone()).await;
+            match latest_block_no_ret {
+                Ok(latest_block_no) => {
+                    if block_no == 0 {
+                        block_no = latest_block_no;
+                    } else {
+                        if block_no + 100 <= latest_block_no {
+                            block_no += 100;
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::error!("Failed to get latest block_no: {}", e);
+                    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+                }
+            }
+            continue;
+        }
+
+        let test_suite = executor::process(client.clone(), block_no, chain_id).await;
+        match test_suite {
+            anyhow::Result::Ok(items) => {
+                log::info!(
+                    "Generating json file for block_no: {} is successful, txs: {}",
+                    block_no,
+                    items.0.len(),
+                );
+                let mut buf = Vec::new();
+                bincode::serialize_into(&mut buf, &items).expect("serialization failed");
+                log::debug!("test_suite len: {}", buf.len());
+                let suite_path = format!("{}/{}.bin", outdir, block_no);
+                std::fs::write(suite_path.clone(), &buf).unwrap();
+                last_block_no = block_no;
+            }
+            Err(e) => {
+                log::error!("Generating json file for block_no: {} is failed", block_no);
+                log::error!("Error: {}", e);
+                tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+            }
+        }
+    }
+}
+
 async fn get_prove_block_no(client: Arc<Provider<Http>>) -> anyhow::Result<u64> {
     let block_no = client
         .get_block_number()
@@ -309,6 +363,11 @@ async fn main() -> anyhow::Result<()> {
             "check" => check(args[2].as_str()).await?,
             "create_cluster" => create_cluster(&ethproofs_client).await,
             "create_single_machine" => create_single_machine(&ethproofs_client).await,
+            "generate_test_suite" => {
+                let client = Provider::<Http>::try_from(rpc_url).unwrap();
+                let client = Arc::new(client);
+                generate_test_suite(client, block_no, chain_id.parse().unwrap(), &output_dir).await;
+            }
             &_ => todo!(),
         };
         return Ok(());
@@ -343,73 +402,32 @@ async fn main() -> anyhow::Result<()> {
             }
             continue;
         }
-
-        let test_suite =
-            executor::process(client.clone(), block_no, chain_id.parse().unwrap()).await;
-        match test_suite {
-            anyhow::Result::Ok(items) => {
-                log::info!(
-                    "Generating json file for block_no: {} is successful, txs: {}",
-                    block_no,
-                    items.0.len(),
-                );
-                // let total_start = Instant::now();
-                // for (k, v) in items.0.iter() {
-                //     let mut one = models::TestSuite(BTreeMap::new());
-                //     one.0.insert(k.clone(), v.clone());
-                //     let start = Instant::now();
-                //     if !items.0.is_empty() {
-                //         prove_tx(
-                //             &prover_cfg,
-                //             &output_dir,
-                //             &elf_path,
-                //             seg_size,
-                //             execute_only,
-                //             &one,// &items,
-                //             block_no,
-                //             &ethproofs_client,
-                //             cluster_id,
-                //             report,
-                //         )
-                //         .await?;
-                //     }
-                //     let end = Instant::now();
-                //     log::info!(
-                //         "Elapsed time: {:?} secs block_no:{} transactions:{}",
-                //         end.duration_since(start).as_secs(),
-                //         block_no,
-                //         k,
-                //     );
-                // }
-                // let total_end = Instant::now();
-                // log::info!(
-                //     "Elapsed time: {:?} secs block_no:{} transactions:{}",
-                //     total_end.duration_since(total_start).as_secs(),
-                //     block_no,
-                //     items.0.len(),
-                // );
-
-                if !items.0.is_empty() && items.0.len() <= max_tran_size {
+        
+        let file_path = format!("{}/{}.bin", output_dir, block_no);
+        match std::fs::metadata(&file_path) {
+            Ok(metadata) => {
+                if metadata.is_file() {
+                    log::info!("read {} success!", file_path);
                     prove_tx(
                         &prover_cfg,
                         &output_dir,
                         &elf_path,
                         seg_size,
                         execute_only,
-                        &items,
+                        &file_path,
                         block_no,
                         &ethproofs_client,
                         cluster_id,
                         report,
                     )
                     .await?;
+                    last_block_no = block_no;
+                } else if metadata.is_dir() {
+                    log::error!("The path: {} is a directory!", file_path);
                 }
-                last_block_no = block_no;
             }
-            Err(e) => {
-                log::error!("Generating json file for block_no: {} is failed", block_no);
-                log::error!("Error: {}", e);
-                tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+            Err(_) => {
+                continue;
             }
         }
 
