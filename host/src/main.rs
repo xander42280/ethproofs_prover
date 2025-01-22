@@ -390,16 +390,10 @@ async fn main() -> anyhow::Result<()> {
     let mut last_block_no = 0u64;
     loop {
         if block_no == last_block_no {
-            if block_no > 0 {
-                tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
-            }
-            let latest_block_no = get_prove_block_no(client.clone()).await?;
             if block_no == 0 {
-                block_no = latest_block_no;
+                block_no = get_prove_block_no(client.clone()).await?;
             } else {
-                if block_no + 100 <= latest_block_no {
-                    block_no += 100;
-                }
+                block_no += 100;
             }
             continue;
         }
