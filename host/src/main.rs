@@ -292,6 +292,7 @@ async fn generate_test_suite(client: Arc<Provider<Http>>, start_block_no: u64, c
             continue;
         }
 
+        log::info!("Generating json file for block_no: {} start", block_no);
         let test_suite = executor::process(client.clone(), block_no, chain_id).await;
         match test_suite {
             anyhow::Result::Ok(items) => {
@@ -434,6 +435,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
             Err(_) => {
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                 continue;
             }
         }
