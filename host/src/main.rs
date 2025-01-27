@@ -410,20 +410,31 @@ async fn main() -> anyhow::Result<()> {
                         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                         continue;
                     }
-                    prove_tx(
-                        &prover_cfg,
-                        &output_dir,
-                        &elf_path,
-                        seg_size,
-                        execute_only,
-                        &file_path,
-                        block_no,
-                        &ethproofs_client,
-                        cluster_id,
-                        report,
-                    )
-                    .await?;
-                    last_block_no = block_no;
+                    match test_suite {
+                        Ok(test_suite) => {
+                            if test_suite.0.len() > 0 && test_suite.0.len() < max_tran_size {
+                                prove_tx(
+                                    &prover_cfg,
+                                    &output_dir,
+                                    &elf_path,
+                                    seg_size,
+                                    execute_only,
+                                    &file_path,
+                                    block_no,
+                                    &ethproofs_client,
+                                    cluster_id,
+                                    report,
+                                )
+                                .await?;
+                            }
+                            last_block_no = block_no;
+                        }
+                        Err(e) => {
+                            log::warn!("Failed to deserialize test_suite: {:?}", e);
+                            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                            continue;
+                        }  
+                    }
                 } else if metadata.is_dir() {
                     log::error!("The path: {} is a directory!", file_path);
                 }
