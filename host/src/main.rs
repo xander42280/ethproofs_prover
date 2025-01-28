@@ -354,7 +354,7 @@ async fn main() -> anyhow::Result<()> {
     let max_tran_size = env::var("MAX_TRAN_SIZE").unwrap_or("150".to_string());
     let max_tran_size = max_tran_size.parse::<_>().unwrap_or(150);
     let ethproofs_client = ethproofs_client::EthproofClient::new(
-        "https://ethproofs.org/api/v0",
+        "https://ethproofs.org",
         &ethproofs_apikey,
     );
 
