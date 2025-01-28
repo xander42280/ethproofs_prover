@@ -96,7 +96,7 @@ impl EthproofClient {
         }
     }
 
-    // https://staging--ethproofs.netlify.app/api/v0/clusters
+    // https://ethproofs.org/api/v0/clusters
     pub async fn create_cluster(
         &self,
         req: &CreateClusterRequest,
@@ -104,7 +104,7 @@ impl EthproofClient {
         self.post_json("api/v0/clusters", req).await
     }
 
-    // https://staging--ethproofs.netlify.app/api/v0/single-machine
+    // https://ethproofs.org/api/v0/single-machine
     pub async fn single_machine(
         &self,
         req: &CreateSingleMachineRequest,
@@ -112,17 +112,17 @@ impl EthproofClient {
         self.post_json("api/v0/single-machine", req).await
     }
 
-    // https://staging--ethproofs.netlify.app/api/v0/proofs/queued
+    // https://ethproofs.org/api/v0/proofs/queued
     pub async fn queued_proof(&self, req: &QueuedProofRequest) -> Result<QueuedProofResponse> {
         self.post_json("api/v0/proofs/queued", req).await
     }
 
-    // https://staging--ethproofs.netlify.app/api/v0/proofs/proving
+    // https://ethproofs.org/api/v0/proofs/proving
     pub async fn proving_proof(&self, req: &ProvingProofRequest) -> Result<ProvingProofResponse> {
         self.post_json("api/v0/proofs/proving", req).await
     }
 
-    // https://staging--ethproofs.netlify.app/api/v0/proofs/proved
+    // https://ethproofs.org/api/v0/proofs/proved
     pub async fn proved_proof(&self, req: &ProvedProofRequest) -> Result<ProvedProofResponse> {
         self.post_json("api/v0/proofs/proved", req).await
     }
