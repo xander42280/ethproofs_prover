@@ -413,7 +413,7 @@ async fn main() -> anyhow::Result<()> {
                     match test_suite {
                         Ok(test_suite) => {
                             if test_suite.0.len() > 0 && test_suite.0.len() < max_tran_size {
-                                prove_tx(
+                                let _ = prove_tx(
                                     &prover_cfg,
                                     &output_dir,
                                     &elf_path,
@@ -425,7 +425,7 @@ async fn main() -> anyhow::Result<()> {
                                     cluster_id,
                                     report,
                                 )
-                                .await?;
+                                .await;
                             }
                             last_block_no = block_no;
                         }
