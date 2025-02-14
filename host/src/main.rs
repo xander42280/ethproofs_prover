@@ -268,6 +268,7 @@ async fn create_single_machine(ethproofs_client: &ethproofs_client::EthproofClie
 async fn generate_test_suite(client: Arc<Provider<Http>>, start_block_no: u64, chain_id: u64, outdir: &str) {
     let mut last_block_no = 0u64;
     let mut block_no = start_block_no;
+    let mut retry_count = 0;
     loop {
         if block_no == last_block_no {
             if block_no > 0 {
@@ -307,17 +308,22 @@ async fn generate_test_suite(client: Arc<Provider<Http>>, start_block_no: u64, c
                 let suite_path = format!("{}/{}.bin", outdir, block_no);
                 std::fs::write(suite_path.clone(), &buf).unwrap();
                 last_block_no = block_no;
+                retry_count = 0;
             }
             Err(e) => {
                 log::error!("Generating json file for block_no: {} is failed", block_no);
                 log::error!("Error: {}", e);
-                let mut buf = Vec::new();
-                let items = models::TestSuite(BTreeMap::new());
-                bincode::serialize_into(&mut buf, &items).expect("serialization failed");
-                log::debug!("test_suite len: {}", buf.len());
-                let suite_path = format!("{}/{}.bin", outdir, block_no);
-                std::fs::write(suite_path.clone(), &buf).unwrap();
-                last_block_no = block_no;
+                retry_count += 1;
+                if retry_count > 5 {
+                    let mut buf = Vec::new();
+                    let items = models::TestSuite(BTreeMap::new());
+                    bincode::serialize_into(&mut buf, &items).expect("serialization failed");
+                    log::debug!("test_suite len: {}", buf.len());
+                    let suite_path = format!("{}/{}.bin", outdir, block_no);
+                    std::fs::write(suite_path.clone(), &buf).unwrap();
+                    last_block_no = block_no;
+                    retry_count = 0;
+                }
                 tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
             }
         }
